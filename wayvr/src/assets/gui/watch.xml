@@ -148,6 +148,26 @@
           </div>
         </rectangle>
 
+        <!-- Xrizer controls (toggle) -->
+        <rectangle macro="decorative_rect" flex_direction="column" gap="8">
+          <div flex_direction="row" gap="8" justify_content="space_between" align_items="center">
+            <label text="Xrizer" size="20" weight="bold" color="on_background" />
+            <Button id="btn_xrizer" macro="button_style" sticky="0" tooltip_str="Xrizer scale/brightness">
+              <sprite width="40" height="40" src="@/watch/edit.svg" />
+            </Button>
+          </div>
+          <div id="xrizer_root" display="none" flex_direction="column" gap="8">
+            <div flex_direction="row" gap="8" justify_content="space_between" align_items="center">
+              <label text="Scale" size="18" color="on_background" />
+              <Slider id="xrizer_scale_slider" width="220" height="16" min_value="0.01" max_value="1.4" value="1.0" step="0.01" show_value="1" />
+            </div>
+            <div flex_direction="row" gap="8" justify_content="space_between" align_items="center">
+              <label text="Bright" size="18" color="on_background" />
+              <Slider id="xrizer_brightness_slider" width="220" height="16" min_value="0.0" max_value="1.0" value="1.0" step="0.01" show_value="1" />
+            </div>
+          </div>
+        </rectangle>
+
         <!-- Bottom buttons -->
         <div flex_direction="row" gap="8">
           <div gap="4">
