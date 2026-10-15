@@ -159,7 +159,10 @@ pub fn create_watch(app: &mut AppState) -> anyhow::Result<OverlayWindowConfig> {
 
 fn setup_xrizer_controls(panel: &mut GuiPanel<WatchState>) {
     // Toggle button: show/hide slider container (method 2, default hidden).
-    match panel.parser_state.fetch_component_as::<ComponentButton>("btn_xrizer") {
+    match panel
+        .parser_state
+        .fetch_component_as::<ComponentButton>("btn_xrizer")
+    {
         Ok(btn) => {
             let root_id = panel
                 .parser_state

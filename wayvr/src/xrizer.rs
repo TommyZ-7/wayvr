@@ -103,8 +103,5 @@ pub fn read_brightness() -> f32 {
 /// Persist brightness to all candidate locations.
 pub fn write_brightness(value: f32) {
     let clamped = value.clamp(BRIGHTNESS_MIN, BRIGHTNESS_MAX);
-    write_all(
-        &brightness_file_candidates(),
-        &format!("{clamped:.3}"),
-    );
+    write_all(&brightness_file_candidates(), &format!("{clamped:.3}"));
 }
