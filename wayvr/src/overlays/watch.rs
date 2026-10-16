@@ -10,10 +10,10 @@ use crate::{
     windowing::{Z_ORDER_WATCH, backend::OverlayEventData, window::OverlayWindowConfig},
 };
 use glam::{Affine3A, Quat, Vec3, vec3};
-use std::time::Duration;
+use std::{cell::Cell, rc::Rc, time::Duration};
 use wgui::{
     assets::AssetPathRef,
-    components::button::ComponentButton,
+    components::{button::ComponentButton, slider::ComponentSlider},
     parser::{Fetchable, ParseDocumentParams},
 };
 use wlx_common::{
@@ -44,6 +44,7 @@ pub fn create_watch(app: &mut AppState) -> anyhow::Result<OverlayWindowConfig> {
         GuiPanel::new_from_template(app, watch_xml, state, NewGuiPanelParams::default())?;
 
     sets_or_overlays(&mut panel, app);
+    setup_xrizer_controls(&mut panel);
 
     let doc_params = ParseDocumentParams {
         globals: panel.layout.state.globals.clone(),
@@ -154,6 +155,97 @@ pub fn create_watch(app: &mut AppState) -> anyhow::Result<OverlayWindowConfig> {
         global: true,
         ..OverlayWindowConfig::from_backend(Box::new(panel))
     })
+}
+
+fn setup_xrizer_controls(panel: &mut GuiPanel<WatchState>) {
+    // Toggle button: show/hide slider container (method 2, default hidden).
+    match panel
+        .parser_state
+        .fetch_component_as::<ComponentButton>("btn_xrizer")
+    {
+        Ok(btn) => {
+            let root_id = panel
+                .parser_state
+                .get_widget_id("xrizer_root")
+                .unwrap_or_default();
+            let visible = Rc::new(Cell::new(false));
+            {
+                let mut com = panel.layout.common();
+                com.alterables.set_widget_visible(root_id, false);
+                btn.set_sticky_state(&mut com, false);
+            }
+            let btn_clone = btn.clone();
+            btn.on_click(Rc::new(move |common, _| {
+                let next = !visible.get();
+                visible.set(next);
+                common.alterables.set_widget_visible(root_id, next);
+                btn_clone.set_sticky_state(common, next);
+                common.alterables.mark_redraw();
+                Ok(())
+            }));
+        }
+        Err(e) => log::warn!("xrizer: btn_xrizer not found: {e:?}"),
+    }
+
+    // Scale slider: 0.01..=1.40, terminal sink is plain file write.
+    let scale_slider = match panel
+        .parser_state
+        .fetch_component_as::<ComponentSlider>("xrizer_scale_slider")
+    {
+        Ok(slider) => {
+            let mut com = panel.layout.common();
+            slider.set_value_primary(&mut com, crate::xrizer::read_scale());
+            slider.on_value_changed(Box::new(move |_common, e| {
+                crate::xrizer::write_scale(e.value);
+            }));
+            Some(slider)
+        }
+        Err(e) => {
+            log::warn!("xrizer: scale slider not found: {e:?}");
+            None
+        }
+    };
+
+    // Brightness slider: 0.00..=1.00.
+    let brightness_slider = match panel
+        .parser_state
+        .fetch_component_as::<ComponentSlider>("xrizer_brightness_slider")
+    {
+        Ok(slider) => {
+            let mut com = panel.layout.common();
+            slider.set_value_primary(&mut com, crate::xrizer::read_brightness());
+            slider.on_value_changed(Box::new(move |_common, e| {
+                crate::xrizer::write_brightness(e.value);
+            }));
+            Some(slider)
+        }
+        Err(e) => {
+            log::warn!("xrizer: brightness slider not found: {e:?}");
+            None
+        }
+    };
+
+    // Reset button: both values back to 1.00 (files + slider positions).
+    match panel
+        .parser_state
+        .fetch_component_as::<ComponentButton>("btn_xrizer_reset")
+    {
+        Ok(btn) => {
+            btn.on_click(Rc::new(move |common, _| {
+                crate::xrizer::write_scale(crate::xrizer::SCALE_DEFAULT);
+                crate::xrizer::write_brightness(crate::xrizer::BRIGHTNESS_DEFAULT);
+                if let Some(slider) = scale_slider.as_ref() {
+                    slider.set_value_primary(common, crate::xrizer::SCALE_DEFAULT);
+                }
+                if let Some(slider) = brightness_slider.as_ref() {
+                    slider.set_value_primary(common, crate::xrizer::BRIGHTNESS_DEFAULT);
+                }
+                common.alterables.mark_redraw();
+                Ok(())
+            }));
+        }
+        Err(e) => log::warn!("xrizer: reset button not found: {e:?}"),
+    }
 }
 
 fn sets_or_overlays(panel: &mut GuiPanel<WatchState>, app: &mut AppState) {

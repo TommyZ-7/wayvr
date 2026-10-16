@@ -30,6 +30,7 @@ mod state;
 mod subsystem;
 mod test;
 mod windowing;
+mod xrizer;
 
 use std::{
     path::PathBuf,
