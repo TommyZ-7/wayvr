@@ -188,7 +188,7 @@ fn setup_xrizer_controls(panel: &mut GuiPanel<WatchState>) {
     }
 
     // Scale slider: 0.01..=1.40, terminal sink is plain file write.
-    match panel
+    let scale_slider = match panel
         .parser_state
         .fetch_component_as::<ComponentSlider>("xrizer_scale_slider")
     {
@@ -198,12 +198,16 @@ fn setup_xrizer_controls(panel: &mut GuiPanel<WatchState>) {
             slider.on_value_changed(Box::new(move |_common, e| {
                 crate::xrizer::write_scale(e.value);
             }));
+            Some(slider)
         }
-        Err(e) => log::warn!("xrizer: scale slider not found: {e:?}"),
-    }
+        Err(e) => {
+            log::warn!("xrizer: scale slider not found: {e:?}");
+            None
+        }
+    };
 
     // Brightness slider: 0.00..=1.00.
-    match panel
+    let brightness_slider = match panel
         .parser_state
         .fetch_component_as::<ComponentSlider>("xrizer_brightness_slider")
     {
@@ -213,8 +217,34 @@ fn setup_xrizer_controls(panel: &mut GuiPanel<WatchState>) {
             slider.on_value_changed(Box::new(move |_common, e| {
                 crate::xrizer::write_brightness(e.value);
             }));
+            Some(slider)
         }
-        Err(e) => log::warn!("xrizer: brightness slider not found: {e:?}"),
+        Err(e) => {
+            log::warn!("xrizer: brightness slider not found: {e:?}");
+            None
+        }
+    };
+
+    // Reset button: both values back to 1.00 (files + slider positions).
+    match panel
+        .parser_state
+        .fetch_component_as::<ComponentButton>("btn_xrizer_reset")
+    {
+        Ok(btn) => {
+            btn.on_click(Rc::new(move |common, _| {
+                crate::xrizer::write_scale(crate::xrizer::SCALE_DEFAULT);
+                crate::xrizer::write_brightness(crate::xrizer::BRIGHTNESS_DEFAULT);
+                if let Some(slider) = scale_slider.as_ref() {
+                    slider.set_value_primary(common, crate::xrizer::SCALE_DEFAULT);
+                }
+                if let Some(slider) = brightness_slider.as_ref() {
+                    slider.set_value_primary(common, crate::xrizer::BRIGHTNESS_DEFAULT);
+                }
+                common.alterables.mark_redraw();
+                Ok(())
+            }));
+        }
+        Err(e) => log::warn!("xrizer: reset button not found: {e:?}"),
     }
 }
 
